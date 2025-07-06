@@ -1,0 +1,283 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "729d7911-cf4a-422a-bffb-191f365ef2b5",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "124d540e-3b8d-454c-a023-73df83472903",
+      "name": "接收字幕SRT檔案",
+      "webhookId": "729d7911-cf4a-422a-bffb-191f365ef2b5"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 從前一個節點（Webhook）的二進位數據中獲取 SRT 檔案的完整內容\n// 'file' 是您在 Postman 中上傳檔案時設定的 Key 名稱\nconst item = $input.first(); // 獲取第一個輸入項目\n\n// 獲取包含檔案數據的物件 (例如，名稱為 'file' 的物件)\nconst fileData = item.binary.file;\nconst fileName = item.binary.file.fileName;\n\n// 檢查 fileData.data 是否存在，它應該是 Base64 編碼的字串\nif (!fileData || typeof fileData.data !== 'string') {\n    throw new Error(\"SRT file data ('data' property) not found or not a string. Data structure might be different.\");\n}\n\n// --- 關鍵步驟：先將 Base64 字串解碼為 Buffer，再將 Buffer 轉換為 UTF-8 字串 ---\nlet srtContent = Buffer.from(fileData.data, 'base64').toString('utf8');\n\n// --- SRT 文本預處理（保持不變） ---\n// 移除可能的 BOM (Byte Order Mark)\nif (srtContent.charCodeAt(0) === 0xFEFF) {\n    srtContent = srtContent.slice(1);\n}\n\n// 移除所有不可見的零寬度字元 (zero-width characters) 或其他非標準空白符\nsrtContent = srtContent.replace(/[\\u200B-\\u200D\\uFEFF]/g, '');\n\n// 確保文本兩端沒有多餘的空白\nsrtContent = srtContent.trim();\n// --- 預處理結束 ---\n\n// --- SRT 解析程式碼（確保這部分沒有被註解掉） ---\nlet output = [];\nlet currentEntry = {};\nlet isTimestampLine = false;\n\n// 修正後的分割和過濾行，處理不同換行符和空行\nconst lines = srtContent.split(/\\r?\\n/).filter(line => line.trim() !== '');\n\nif (lines.length === 0) {\n    return [{ json: { subtitles: [] } }]; // 如果沒有可解析的行，直接返回空陣列\n}\n\nfor (let i = 0; i < lines.length; i++) {\n    const line = lines[i].trim();\n\n    // 檢查是否為時間戳行 (包含 \"-->\")\n    if (line.includes('-->')) {\n        // 如果 currentEntry 已經有數據了，表示上一個條目結束了，先推進去\n        if (Object.keys(currentEntry).length > 0) {\n            output.push(currentEntry);\n            currentEntry = {};\n        }\n\n        // 解析時間戳\n        const parts = line.split('-->').map(s => s.trim());\n        currentEntry.startTime = parts[0];\n        currentEntry.endTime = parts[1];\n        currentEntry.text = ''; // 初始化文本內容\n        isTimestampLine = true; // 標記接下來的行將是文本內容\n    } else if (isTimestampLine) {\n        // 如果是文本行，將其添加到 currentEntry.text\n        currentEntry.text += (currentEntry.text === '' ? '' : '\\n') + line;\n    }\n    // 如果不是時間戳行也不是文本行（例如字幕編號），則跳過\n}\n\n// 循環結束後，將最後一個未處理的條目添加到 output 陣列\nif (Object.keys(currentEntry).length > 0) {\n    output.push(currentEntry);\n}\nreturn { json: { subtitles: output, fileName: fileName  } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ],
+      "id": "45cca7b6-4106-4126-acea-b91818913682",
+      "name": "解析SRT字幕"
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {
+          "reset": "={{ $json.subtitles }}"
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        640,
+        -40
+      ],
+      "id": "b15d66d2-e059-4005-a7f8-9df551f0fafa",
+      "name": "分批處理字幕句型"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyDMI8HaBNqlUGwbbo-e7deHre8diGwfeag",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"contents\": [\n      {\n        \"parts\": [\n          {\n            \"text\": {{ `${JSON.stringify( `你是一個中文泰語專業老師,你想要做一本泰文學習手札, 要從字幕中篩選出有學習價值的句子作為教學使用, 以下泰語字幕內容中,以;隔開每一句,提取出適合中文學習者學習的泰語常用文法, 舉例來說,例如ตัวละครพฤติกรรมสถานที่หน่วยงานวิชาชีพ這句台詞其中有個文法ที่, 就回傳ที่,如果是語氣詞就不用了(นะ,เนอะ,อ่ะ,สิ這種不用選成文法), 我要類似 แต่, เท่านั้น 這種連接詞的文法,並保持其原始時間戳,對於純音樂或無意義文本(如 [เพลง]),請忽略該條目,不返回任何內容.回傳格式請務必直接僅以單純不會報格式錯誤的 JSON 陣列的形式返回結果,不用再告訴我文字說明,回覆內容不要有 double-quoted,每個物件包含 'originalText' (原始泰語文本), 'sentence' (提取出的泰語文法), 'startTime' (開始時間戳), 'endTime' (結束時間戳), 'chinese'(該句子的中文翻譯)---以下是字幕內容:`+$json.subtitles.map(item => '時間戳: ' + JSON.stringify(item.startTime) + ' --> ' + JSON.stringify(item.endTime) + '文本: ' + JSON.stringify(item.text)).join(';'))}` }}\n          }\n        ]\n      }\n    ]\n  }\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        -100
+      ],
+      "id": "b782a890-476d-4952-9ef7-ec02eef8da5e",
+      "name": "Gemini分析句型"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 步驟 1: 使用 n8n 標準方法取得前一個節點的第一個項目\nconst inputItem = $input.first();\n\n// 步驟 2: 增加保護機制，檢查是否有資料傳入\nif (!inputItem || !inputItem.json) {\n  // 如果前一個節點沒有成功回傳資料，就回傳一個空陣列\n  // 這樣可以避免錯誤，並讓你知道問題可能出在上一個節點\n  return [];\n}\n\n// 步驟 3: 安全地取得回應資料\nconst responseItem = inputItem.json;\n\n// 步驟 4: 再次檢查，確保資料結構如預期\nif (!responseItem.candidates || !responseItem.candidates[0] || !responseItem.candidates[0].content || !responseItem.candidates[0].content.parts || !responseItem.candidates[0].content.parts[0]) {\n    // 如果API回應的結構不完整，也回傳空陣列以避免錯誤\n    return [];\n}\n\n// 步驟 5: 提取並清理 JSON 字串\nconst jsonString = responseItem.candidates[0].content.parts[0].text;\nconst cleanedString = jsonString.replace(/^```json\\n/, '').replace(/```$/, '');\n\n// 步驟 6: 解析 JSON 字串並回傳結果\ntry {\n  const items = JSON.parse(cleanedString);\n  return items;\n} catch (error) {\n  // 如果 JSON 解析失敗，拋出一個包含更多資訊的錯誤\n  throw new Error(\"無法解析從 Gemini 回應的 JSON 字串: \" + error.message);\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        -100
+      ],
+      "id": "24f4971b-fa07-4cdc-8810-230eb58250fa",
+      "name": "乾淨資料"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": {
+          "__rl": true,
+          "value": "1Dwby-sZj1Zi6GABaK9W7zYb5Pkc2f_KAydnf1kxxV1E",
+          "mode": "list",
+          "cachedResultName": "WhaleXOXO泰劇",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Dwby-sZj1Zi6GABaK9W7zYb5Pkc2f_KAydnf1kxxV1E/edit?usp=drivesdk"
+        },
+        "title": "={{ $json.fileName }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        300,
+        0
+      ],
+      "id": "97cfc388-96c7-44a9-b527-99450d36822e",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FpYXO9Vx3VT5a7G8",
+          "name": "Google Sheets account Jane"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Dwby-sZj1Zi6GABaK9W7zYb5Pkc2f_KAydnf1kxxV1E",
+          "mode": "list",
+          "cachedResultName": "WhaleXOXO泰劇",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Dwby-sZj1Zi6GABaK9W7zYb5Pkc2f_KAydnf1kxxV1E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Edit Fields').item.json.fileName }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1100,
+        -100
+      ],
+      "id": "68f2c0c8-0275-4f77-82a5-6e47fa66392f",
+      "name": "Google Sheets1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FpYXO9Vx3VT5a7G8",
+          "name": "Google Sheets account Jane"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1c0fe36-a0f4-4ee2-a4da-dd1060a49677",
+              "name": "subtitles",
+              "value": "={{ $('解析SRT字幕').item.json.subtitles }}",
+              "type": "array"
+            },
+            {
+              "id": "68c5037e-48c8-41f2-b59a-76beed1d218e",
+              "name": "spreadsheetId",
+              "value": "={{$json.spreadsheetId}}",
+              "type": "string"
+            },
+            {
+              "id": "4b5ff0b7-0c29-4d4f-abf7-8a640be32119",
+              "name": "fileName",
+              "value": "={{ $('解析SRT字幕').item.json.fileName }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        460,
+        -40
+      ],
+      "id": "be8e5a9b-4372-4a62-97ae-88d51e8a0922",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "接收字幕SRT檔案": {
+      "main": [
+        [
+          {
+            "node": "解析SRT字幕",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析SRT字幕": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "分批處理字幕句型": {
+      "main": [
+        [
+          {
+            "node": "Gemini分析句型",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "分批處理字幕句型",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini分析句型": {
+      "main": [
+        [
+          {
+            "node": "乾淨資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "乾淨資料": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "分批處理字幕句型",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a3b54987-1d0c-4408-8758-76859e9fa2c7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63f5f596968ff4e0f35871ebea9236b360f858b68307fa9fd22aafb31284ef25"
+  },
+  "id": "XGPjg3FRbgzOrw5h",
+  "tags": []
+}

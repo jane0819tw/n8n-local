@@ -1,0 +1,288 @@
+{
+  "name": "auto update token",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o",
+          "mode": "list",
+          "cachedResultName": "n8n_setting",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "token",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "platform",
+              "lookupValue": "IG"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        220,
+        0
+      ],
+      "id": "7bd63fe5-8ee7-459b-bb7a-742b7c2fdd1a",
+      "name": "讀取舊權杖",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6cf9da54-edbc-4d86-8776-c65e17613f43",
+      "name": "定時執行"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o",
+          "mode": "list",
+          "cachedResultName": "n8n_setting",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "token",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "platform": "IG",
+            "token": "={{ $('刷新權杖').item.json.access_token }}",
+            "expire_time": "={{ $now.plus({ days: 59 }).toISODate() }}",
+            "update_time": "={{ $now.toISO() }}",
+            "asset_id": "={{ $('讀取舊權杖').item.json.asset_id }}"
+          },
+          "matchingColumns": [
+            "platform"
+          ],
+          "schema": [
+            {
+              "id": "platform",
+              "displayName": "platform",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "token",
+              "displayName": "token",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "expire_time",
+              "displayName": "expire_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "update_time",
+              "displayName": "update_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "asset_id",
+              "displayName": "asset_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        700,
+        -20
+      ],
+      "id": "0331285c-a3e5-4968-951d-9a24030a4da1",
+      "name": "Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v23.0/oauth/access_token",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "fb_exchange_token"
+            },
+            {
+              "name": "fb_exchange_token",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "client_id",
+              "value": "1950769652129063"
+            },
+            {
+              "name": "client_secret",
+              "value": "325d196ecdbf31f453db34418fd499ff"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "baeab925-be58-4484-8dde-9a13734526c7",
+      "name": "刷新權杖"
+    },
+    {
+      "parameters": {
+        "url": "https://graph.instagram.com/refresh_access_token",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "grant_type",
+              "value": "ig_refresh_token"
+            },
+            {
+              "name": "access_token",
+              "value": "={{ $json.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        -340
+      ],
+      "id": "d2375165-296a-4509-b686-97628d1e834a",
+      "name": "刷新權杖-ig url (fail)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "讀取舊權杖": {
+      "main": [
+        [
+          {
+            "node": "刷新權杖",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "定時執行": {
+      "main": [
+        [
+          {
+            "node": "讀取舊權杖",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "刷新權杖": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "刷新權杖-ig url (fail)": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9e42c11f-cd40-453b-a80e-869067d8a15d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63f5f596968ff4e0f35871ebea9236b360f858b68307fa9fd22aafb31284ef25"
+  },
+  "id": "d3S8vfl41C999cVW",
+  "tags": []
+}
