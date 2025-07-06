@@ -1,0 +1,8 @@
+AI Studio APIKey AIzaSyDMI8HaBNqlUGwbbo-e7deHre8diGwfeag
+
+OAuth 用戶端
+用戶端編號
+1013897205458-ctb692j9h61ttohgass3a7ch8usr6l0g.apps.googleusercontent.com
+
+用戶端密碼
+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
