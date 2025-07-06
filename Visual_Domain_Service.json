@@ -1,0 +1,212 @@
+{
+  "name": "Visual Domain Service",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -340,
+        -40
+      ],
+      "id": "91abda2b-537d-4a4d-88d1-c25f8da727d2",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "const visuals_input = {\n  // 在這裡定義本次作業的唯一 ID\n  \"jobId\": \"taiwan-cute-warrior-cinematic-001\",\n\n  // 【新增】預先生成的中文描述，描述整個 Job 的核心場景\n  \"description\": \"一位非常可愛漂亮的年輕台灣女將軍，臉上帶有戰場留下的輕微傷痕，眼神清澈但充滿決心，在黃昏中堅定地走向鏡頭。\",\n\n  // prompts 陣列包含多個具體的鏡頭或動作描述\n  \"prompts\": [\n    \"In the soft light of dusk, the whole world seems to be filtered by a shallow depth of field. Behind her, the ancient city gate and the desolate streets under the setting sun are blurred into a halo and warm blocks of  only focus is the short-haired general who is walking towards you step by step with  smoke and dust cannot cover the white and beautiful skin under her armor. A shallow scar just cut across her cheek is shocking on the flawless skin. The ancient general armor that fits her body shape, while outlining her well-trained and agile lines, is also engraved with countless dents and scratches due to battle  holds the spear in one hand, and her steps are steady and  makes people unable to look away is her eyes. Those are a pair of eyes as clear as a stream, as if they still have a hint of immaturity that belongs to this age, but when she looks at you, the depths of her eyes are burning with a determined fire that has experienced many setbacks and is enough to shake the mountains and  is both the pure and flawless. she and the ,he who has returned from bloodbath. Between this blurred background and clear subject, she is walking straight towards you with all her glory and contradictions. trending on artstation\"\n  ],\n  \"style\": \"masterpiece, best quality, ultra-detailed, photorealistic, cinematic film still, sharp focus, dramatic lighting, golden hour\",\n  \"style_preset\": \"photographic\",\n  \"negative_prompt\": \"deformed, mutated, ugly, bad anatomy, disfigured, poorly drawn face, mutated hands, extra limbs, extra fingers, text, watermark, blurry, jpeg artifacts, signature, cartoon, anime, 3d render, childlike face, overly cute, overly sexualized\"\n};\n\n// 將完整的設定物件包裝後回傳。\nreturn {\n  visuals: visuals_input\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        -40
+      ],
+      "id": "faca77b5-0dfd-4763-a572-a96a407048b9",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": "={{ $json.visuals.prompts }}"
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        140,
+        -40
+      ],
+      "id": "de53ef4a-40bb-4d0b-928d-8986710f59a6",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.stability.ai/v2beta/stable-image/generate/ultra",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "={{ $json.visuals.prompts[0] }}, {{ $json.visuals.style }}"
+            },
+            {
+              "name": "style_preset",
+              "value": "={{ $json.visuals.style_preset }}"
+            },
+            {
+              "name": "negative_prompt",
+              "value": "={{ $json.visuals.negative_prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        -20
+      ],
+      "id": "9eeb55ee-c261-4d17-988e-fcdf0048e9ed",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Oo3YJCW1UHNFZI6v",
+          "name": "Stability AI Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $('Code').item.json.visuals.requestId }}_{{$now.toMillis()}}.png",
+        "dataPropertyName": "=data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        -20
+      ],
+      "id": "37a12e5f-c4d5-4b19-80a7-6b34448a29ab",
+      "name": "Read/Write Files from Disk",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "image",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        -20
+      ],
+      "id": "bee53cf7-88f5-4410-a9e6-fb3f975e440d",
+      "name": "Convert to File"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "16db5cca-0f06-4033-8154-d9494947badd",
+  "meta": {
+    "instanceId": "d942a8fe9ce82b4604360bf6f9039e6ccc8ba4698d36fc803da1cdd7025d6fa8"
+  },
+  "id": "wh3MBsUcjMlNheYI",
+  "tags": []
+}

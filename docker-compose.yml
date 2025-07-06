@@ -1,0 +1,27 @@
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    environment:
+      # 這會將 n8n 的基礎 URL 設定為 localhost:5678
+      # 如果你要通過其他域名或 IP 訪問，需要修改這個值
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      # 設定時區，例如 'Asia/Taipei' (台灣時間) 或 'America/New_York' 等
+      # 你可以在這裡找到所有的時區名稱：https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+      - TZ=Asia/Taipei
+      # 為了安全性，建議啟用基本身份驗證並設定使用者名稱和密碼
+      # - N8N_BASIC_AUTH_ACTIVE=true
+      # - N8N_BASIC_AUTH_USER=your_username
+      # - N8N_BASIC_AUTH_PASSWORD=your_strong_password
+
+volumes:
+  n8n_data:
