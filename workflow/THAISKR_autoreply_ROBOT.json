@@ -1,0 +1,761 @@
+{
+  "name": "THAISKR autoreply ROBOT",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "meta-ig",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -900,
+        -320
+      ],
+      "id": "0e4abc62-3090-4683-9ab6-caadc8dbc801",
+      "name": "監聽IG貼文",
+      "webhookId": "88247658-1337-494e-865c-1d4c95ac2a35"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -660,
+        -320
+      ],
+      "id": "3cb43b26-3100-4ec5-8aec-2b306c877e10",
+      "name": "回應IG"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meta-ig",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1000,
+        -60
+      ],
+      "id": "b80c34d7-fbd7-4187-b485-ca72118dfafe",
+      "name": "監聽IG貼文 POST",
+      "webhookId": "88247658-1337-494e-865c-1d4c95ac2a35"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "get",
+        "pageId": {
+          "__rl": true,
+          "value": "224f8a1f7fba8004ba23ec6524672ebd",
+          "mode": "id"
+        }
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -60,
+        -360
+      ],
+      "id": "fa7f4767-e560-40bf-890b-fb777c4eadd7",
+      "name": "拿token, ig",
+      "credentials": {
+        "notionApi": {
+          "id": "xTdgso3SHGdG7oDj",
+          "name": "Notion account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.anto_message_type }}",
+                    "rightValue": "=shopping_fan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8ea0d5e8-2f18-45ac-b4ac-fe624bbcf0f0"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "39291b45-c3ba-4b4e-a374-c4f6ea114e6e",
+                    "leftValue": "={{ $json.anto_message_type }}",
+                    "rightValue": "movie_manual",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "86294b14-40e1-4af6-9285-2e05bcc24e65",
+                    "leftValue": "={{ $json.anto_message_type }}",
+                    "rightValue": "=blank_manual",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -280,
+        -60
+      ],
+      "id": "7487d95a-6caf-4723-9781-ec73c62dfbce",
+      "name": "自動回覆"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d30ffa23-c6c9-48aa-9fed-1d3781538382",
+              "leftValue": "={{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.text }}",
+              "rightValue": "熱",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "a6e484dc-1086-46fc-9616-82fb460e04c5",
+              "leftValue": "={{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.text }}",
+              "rightValue": "ร้อน",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -60,
+        -120
+      ],
+      "id": "760331b3-8596-4232-a9e7-42f061f09615",
+      "name": "[手持風扇]"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d30ffa23-c6c9-48aa-9fed-1d3781538382",
+              "leftValue": "={{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.text }}",
+              "rightValue": "我要",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "8b962459-5520-4cf1-bd9a-0b4ebc23a580",
+              "leftValue": "={{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.text }}",
+              "rightValue": "看電影",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "ac068570-17b6-40ed-9286-595ccce16fee",
+              "leftValue": "={{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.text }}",
+              "rightValue": "學泰語",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -60,
+        60
+      ],
+      "id": "5b7f4b40-ceb0-40c5-a12d-4417d0c0c72e",
+      "name": "看電影學泰語手札"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o",
+          "mode": "list",
+          "cachedResultName": "n8n_setting",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "token",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "platform",
+              "lookupValue": "IG"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -840,
+        -60
+      ],
+      "id": "80ad3f20-16c8-4276-8158-b49dd058d8b6",
+      "name": "取得token",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o",
+          "mode": "list",
+          "cachedResultName": "n8n_setting",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1633802549,
+          "mode": "list",
+          "cachedResultName": "auto_message",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit#gid=1633802549"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRange"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -680,
+        -60
+      ],
+      "id": "cfbb9f3d-7156-47d6-9aac-dffa75076420",
+      "name": "取得自動回覆貼文列表",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('取得token').item.json.asset_id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=Authorization",
+              "value": "=Bearer {{ $('取得token').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "recipient",
+              "value": "={{{\"comment_id\": $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.id} }}"
+            },
+            {
+              "name": "message",
+              "value": "={{\n  {\n    \"text\": \"[從電影學句型手札] \\n設計讓泰語學習者能以有趣素材學習，增添泰語學習樂趣與應用情境!\\n\\n先試閱 \\nhttps://drive.google.com/file/d/19FKVxu5-boHyJyPN5F6eVXd2vm4KbSXg/view\\n\\n實體版\\nhttps://myship.7-11.com.tw/cart/confirm/GM2306059443543\\n\\n電子版\\nhttps://www.patreon.com/thaiskr/shop/zhong-cong-dian-ying-xue-ju-xing-shou-zi-929031?source=storefront\"\n  }\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        40
+      ],
+      "id": "6345098b-532d-4745-b66a-5b21805527cb",
+      "name": "自動私訊[電影手札]"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('取得token').item.json.asset_id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('取得token').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "recipient",
+              "value": "={{    {      \"comment_id\": $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.id    }  }}"
+            },
+            {
+              "name": "message",
+              "value": "={{   {     \"text\": \"🔥泰時刻x向物高速手持風扇\\n2025/7/2 - 7/ 8限時 7 天‼️ \\n ❶ 新款渦輪Ice ⚪️⚫️ \\n ❷ 經典款引擎Pro ⚪️ ⚫️ \\n解救炎熱夏天 🔥\\n https://fanshopping.com.tw/100hr.php?id=9708\"   } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        -120
+      ],
+      "id": "8119f74a-4965-45e6-ade8-a3b5a8f7529f",
+      "name": "自動私訊[手持風扇]"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.id }}/replies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=Authorization",
+              "value": "=Bearer {{ $('取得token').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "已傳給你囉～沒收到請私訊我"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        40
+      ],
+      "id": "3611ebac-e6ce-4c9f-819b-324c3971ce67",
+      "name": "回覆留言"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.id }}/replies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=Authorization",
+              "value": "=Bearer {{ $('取得token').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "已傳給你囉～沒收到請私訊我"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        -120
+      ],
+      "id": "7696e479-52e6-4fd7-8586-8b96c0581027",
+      "name": "回覆留言1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d30ffa23-c6c9-48aa-9fed-1d3781538382",
+              "leftValue": "={{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.text }}",
+              "rightValue": "我想看劇學泰語",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -60,
+        260
+      ],
+      "id": "3e6e9d83-a018-40ea-8ebf-d853bc60fbe1",
+      "name": "BLANK手札"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('取得token').item.json.asset_id }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=Authorization",
+              "value": "=Bearer {{ $('取得token').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "recipient",
+              "value": "={{{\"comment_id\": $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.id} }}"
+            },
+            {
+              "name": "message",
+              "value": "={{\n  {\n    \"text\":  \"🔗 完整實體版\\nhttps://myship.7-11.com.tw/cart/confirm/GM2306059443543\\n\\n🔗 完整電子版\\nhttps://www.patreon.com/thaiskr/shop?fbclid=PAZXh0bgNhZW0CMTEAAaYbeyYs1aXS9fshpzco9xp-ypqTHxBefbBlaaYU5y3RZ_pLDLOk36K7-lw_aem_txf777emoxpyz803CbXlsQ\\n\\n🔗試閱版\\nhttps://drive.google.com/file/d/1s8UTD-__x1wNuNA19AugZv8805COGN4_/view?usp=drivesdk\"\n  }\n}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        260
+      ],
+      "id": "c7c1be63-5f63-42aa-87a2-ad93896d3a82",
+      "name": "自動私訊[BLANK手札]"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $('監聽IG貼文 POST').item.json.body.entry[0].changes[0].value.id }}/replies",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "=Authorization",
+              "value": "=Bearer {{ $('取得token').item.json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message",
+              "value": "已傳給你囉～沒收到請私訊我"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        500,
+        260
+      ],
+      "id": "21d8974a-ff00-465f-845b-dedabe5aa042",
+      "name": "回覆留言2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n// for (const item of $input.all()) {\n//   item.json.myNewField = 1;\n// }\n\n// return $input.all();\n\nconst media_id = $('監聽IG貼文 POST').first().json.body.entry[0].changes[0].value.media.id\n\nreturn $input.all().filter(item => item.json.post_id === media_id);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        -60
+      ],
+      "id": "bdd04c89-a48e-4ce0-90a4-1a6c1b6af5df",
+      "name": "Code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "監聽IG貼文": {
+      "main": [
+        [
+          {
+            "node": "回應IG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "監聽IG貼文 POST": {
+      "main": [
+        [
+          {
+            "node": "取得token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "拿token, ig": {
+      "main": [
+        []
+      ]
+    },
+    "自動回覆": {
+      "main": [
+        [
+          {
+            "node": "[手持風扇]",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "看電影學泰語手札",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BLANK手札",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "[手持風扇]": {
+      "main": [
+        [
+          {
+            "node": "自動私訊[手持風扇]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "看電影學泰語手札": {
+      "main": [
+        [
+          {
+            "node": "自動私訊[電影手札]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "取得token": {
+      "main": [
+        [
+          {
+            "node": "取得自動回覆貼文列表",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "取得自動回覆貼文列表": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "自動私訊[手持風扇]": {
+      "main": [
+        [
+          {
+            "node": "回覆留言1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "自動私訊[電影手札]": {
+      "main": [
+        [
+          {
+            "node": "回覆留言",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BLANK手札": {
+      "main": [
+        [
+          {
+            "node": "自動私訊[BLANK手札]",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "自動私訊[BLANK手札]": {
+      "main": [
+        [
+          {
+            "node": "回覆留言2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "自動回覆",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5d56142b-38b9-4400-b5bf-ac9445a58550",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63f5f596968ff4e0f35871ebea9236b360f858b68307fa9fd22aafb31284ef25"
+  },
+  "id": "BChTWvmsnIZHh8HK",
+  "tags": [
+    {
+      "createdAt": "2025-07-22T08:15:20.004Z",
+      "updatedAt": "2025-07-22T08:15:20.004Z",
+      "id": "VSrBZuX3YuKoQWh8",
+      "name": "THAISKR_SOCIAL"
+    }
+  ]
+}

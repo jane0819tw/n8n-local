@@ -278,11 +278,18 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "9e42c11f-cd40-453b-a80e-869067d8a15d",
+  "versionId": "86185523-1035-4717-addf-7473fa1bd834",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "63f5f596968ff4e0f35871ebea9236b360f858b68307fa9fd22aafb31284ef25"
   },
   "id": "d3S8vfl41C999cVW",
-  "tags": []
+  "tags": [
+    {
+      "createdAt": "2025-07-22T08:15:20.004Z",
+      "updatedAt": "2025-07-22T08:15:20.004Z",
+      "id": "VSrBZuX3YuKoQWh8",
+      "name": "THAISKR_SOCIAL"
+    }
+  ]
 }

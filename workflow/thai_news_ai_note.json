@@ -1,0 +1,191 @@
+{
+  "name": "thai_news_ai_note",
+  "nodes": [
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "62e76711-15cf-4375-a066-63c6fff8edb7",
+      "name": "3. 分批處理句子",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        500,
+        80
+      ],
+      "notes": "這個節點的功能是「循環」。\n\n它會將前一步的所有句子，一次一個地送入後續的 Gemini 節點進行分析，確保流程穩定。"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  // Gemini 的回應在 response 屬性中\n  const responseText = $json.response;\n  \n  // 移除可能存在的 Markdown 格式 (```json ... ```)\n  const cleanedText = responseText.replace(/```json\\n|```/g, '').trim();\n  \n  // 解析 JSON 字串\n  const vocabularyList = JSON.parse(cleanedText);\n\n  // 確保回傳的是一個陣列\n  if (Array.isArray(vocabularyList)) {\n    return vocabularyList.map(item => ({ json: item }));\n  } else {\n    return [{ json: vocabularyList }];\n  }\n} catch (error) {\n  // 如果解析失敗，回傳錯誤訊息，方便除錯\n  return [{ json: { error: 'Failed to parse Gemini response', details: error.message, originalResponse: $json.response } }];\n}"
+      },
+      "id": "0ef34789-0f3a-42f1-9ee3-308df020021d",
+      "name": "5. 解析 AI 回應",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        80
+      ],
+      "notes": "Gemini 回傳的結果是「文字格式」的 JSON，這個節點負責將其轉換成 n8n 可以使用的「結構化資料」。"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. 從檔名提取日期\nconst fileName = $json.srtFile.filename;\n// 新的邏輯: 尋找 YYYYMMDD 格式的日期\n// 使用正規表示式尋找檔名開頭的8位數字 (例如: 20250714)\nconst dateMatch = fileName.match(/^(\\d{8})/);\nlet newsDate;\n\nif (dateMatch) {\n    const dateString = dateMatch[1]; // 取得匹配到的字串，例如 \"20250714\"\n    const year = dateString.substring(0, 4);\n    const month = dateString.substring(4, 6);\n    const day = dateString.substring(6, 8);\n    // 將其格式化成 Notion 接受的 \"YYYY-MM-DD\" 格式\n    newsDate = `${year}-${month}-${day}`;\n} else {\n    // 如果檔名開頭找不到8位數字，則使用今天的日期作為備用\n    newsDate = new Date().toISOString().split('T')[0];\n}\n\n// 2. 解析 SRT 檔案內容 (最終修正版)\n// 使用 n8n 的內建輔助函數，這是讀取檔案內容最可靠的方法\nconst fileBuffer = await this.helpers.getBinaryDataBuffer('srtFile');\n\n// 直接將 Buffer 轉換為 utf8 字串\nconst srtContent = fileBuffer.toString('utf8');\n\nconst textOnly = srtContent\n  .replace(/\\d+\\n/g, '')\n  .replace(/\\d{2}:\\d{2}:\\d{2},\\d{3} --> \\d{2}:\\d{2}:\\d{2},\\d{3}\\n/g, '')\n  .replace(/<[^>]*>/g, '')\n  .replace(/\\r/g, '')\n  .replace(/\\n{2,}/g, ' ')\n  .trim();\n\nconst sentences = textOnly.split(/[.!?]+/).filter(sentence => sentence.trim().length > 0);\n\n// 3. 將日期和句子一起輸出\n// 將解析出來的 newsDate 附加到每一個句子項目中\nreturn sentences.map(sentence => ({ \n  json: { \n    sentence: sentence.trim(),\n    newsDate: newsDate\n  } \n}));"
+      },
+      "id": "087172d4-42b0-41c7-b05d-a2fa2338d7da",
+      "name": "2. 解析檔名與SRT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        80
+      ],
+      "notes": "此節點會自動完成兩件事：\n1. 從您上傳的 SRT 檔名中讀取日期。\n2. 提取檔案中的所有字幕文字，並處理成一個個獨立的句子。"
+    },
+    {
+      "parameters": {
+        "path": "cb9e17ae-021b-45ab-a642-11564b02d516",
+        "formTitle": "檔案上傳",
+        "formDescription": "srt檔案上傳",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "srtFile",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fc0e3f49-f345-4b57-8e5d-e73a55bedc90",
+      "name": "1. Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 1,
+      "position": [
+        60,
+        80
+      ],
+      "webhookId": "cb9e17ae-021b-45ab-a642-11564b02d516",
+      "notes": "這是工作流程的進入點。\n\n啟用流程後，點擊下方的 \"Form URL\" 即可打開上傳頁面。"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyDMI8HaBNqlUGwbbo-e7deHre8diGwfeag",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"contents\": [\n      {\n        \"parts\": [\n          {\n            \"text\": {{ `${JSON.stringify( `你是一個中文泰語專業老師,你想要做一本泰文學習手札, 要從字幕中篩選出有學習價值的句子作為教學使用, 以下泰語字幕內容中,以;隔開每一句,提取出適合中文學習者學習的泰語常用文法, 舉例來說,例如ตัวละครพฤติกรรมสถานที่หน่วยงานวิชาชีพ這句台詞其中有個文法ที่, 就回傳ที่,如果是語氣詞就不用了(นะ,เนอะ,อ่ะ,สิ這種不用選成文法), 我要類似 แต่, เท่านั้น 這種連接詞的文法,並保持其原始時間戳,對於純音樂或無意義文本(如 [เพลง]),請忽略該條目,不返回任何內容.回傳格式請務必直接僅以單純不會報格式錯誤的 JSON 陣列的形式返回結果,不用再告訴我文字說明,回覆內容不要有 double-quoted,每個物件包含 'originalText' (原始泰語文本), 'sentence' (提取出的泰語文法), 'startTime' (開始時間戳), 'endTime' (結束時間戳), 'chinese'(該句子的中文翻譯)---以下是字幕內容:`+$json.subtitles.map(item => '時間戳: ' + JSON.stringify(item.startTime) + ' --> ' + JSON.stringify(item.endTime) + '文本: ' + JSON.stringify(item.text)).join(';'))}` }}\n          }\n        ]\n      }\n    ]\n  }\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        740,
+        80
+      ],
+      "id": "77ab1a2e-3f32-4749-a9aa-26711d6c73b8",
+      "name": "Gemini"
+    },
+    {
+      "parameters": {
+        "pageId": {
+          "__rl": true,
+          "value": "https://www.notion.so/238f8a1f7fba802698c1d1bd649ded5e?v=238f8a1f7fba81589f6c000c092f18a6",
+          "mode": "url"
+        },
+        "title": "test",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        1140,
+        100
+      ],
+      "id": "d384530c-a5ba-4f8a-baa3-a9001a41f7e0",
+      "name": "Notion",
+      "credentials": {
+        "notionApi": {
+          "id": "xTdgso3SHGdG7oDj",
+          "name": "Notion account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "2. 解析檔名與SRT": {
+      "main": [
+        [
+          {
+            "node": "3. 分批處理句子",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "2. 解析檔名與SRT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. 分批處理句子": {
+      "main": [
+        [
+          {
+            "node": "3. 分批處理句子",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. 解析 AI 回應": {
+      "main": [
+        [
+          {
+            "node": "Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ded360f1-f86a-4197-b8ac-c2d37f7de0f3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63f5f596968ff4e0f35871ebea9236b360f858b68307fa9fd22aafb31284ef25"
+  },
+  "id": "TjbfPmpGMdesHq6O",
+  "tags": [
+    {
+      "createdAt": "2025-07-22T08:15:53.663Z",
+      "updatedAt": "2025-07-22T08:15:53.663Z",
+      "id": "mpyfYypDx0lCvBYz",
+      "name": "LEARN_THAI"
+    }
+  ]
+}

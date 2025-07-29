@@ -1,0 +1,649 @@
+{
+  "name": "auto lottery",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const requiredTags = $('抽獎條件').first().json.requiredTags;\nconst deadline = new Date($('抽獎條件').first().json.deadline);\nconst filteredItems = [];\nconst cleanJsonArray = $input.all().map(item => item.json);\nfor (const item of cleanJsonArray) {\n  const commentText = item.text || '';\n  // 計算 '@' 符號的數量\n  const tagCount = (commentText.match(/@/g) || []).length;\n  const commentTime = new Date(item.timestamp);\n  if (tagCount >= requiredTags && commentTime < deadline) {\n    filteredItems.push(item);\n  }\n}\n\nreturn filteredItems;"
+      },
+      "id": "f5d478fc-570f-4a02-8774-54081fbb6e44",
+      "name": "3. 篩選標記數",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -928,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const numberOfWinners = $('抽獎條件').first().json.numberOfWinners;\nconst participants = $input.all().map(item => item.json);\n\nif (participants.length === 0) {\n  return [{ json: { error: '沒有任何合格的抽獎者！' }}];\n}\n\n// Fisher-Yates shuffle algorithm\nfor (let i = participants.length - 1; i > 0; i--) {\n  const j = Math.floor(Math.random() * (i + 1));\n  [participants[i], participants[j]] = [participants[j], participants[i]];\n}\n\nconst winners = participants.slice(0, numberOfWinners);\n\n// 將結果打包成 n8n 可讀的格式回傳\nreturn winners.map(winner => ({ json: winner }));"
+      },
+      "id": "495ff6df-9ea2-47ee-b3f1-56f09cda8d62",
+      "name": "5. 隨機抽出中獎者",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "=### 🎉 中獎名單 🎉\n\n{{ $items.map(item => \"@\" + item.json.from.username).join('\\n') }}\n\n### 下一步驟\n\n由於 Instagram API 的限制，n8n **無法自動私訊**中獎者或在留言區標記他們。\n\n**請手動執行以下操作：**\n1.  **公布**：複製上方的中獎者名單，以留言、貼文或限時動態的方式公布。\n2.  **聯繫**：請中獎者在指定時間內主動私訊您，以核對身份並領取獎品。"
+      },
+      "id": "6ad8ab33-3a6c-4fdf-885f-689c91336514",
+      "name": "6. 產生中獎名單 (手動用)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        528,
+        80
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        -384
+      ],
+      "id": "ea9f4875-49c8-4a56-97e4-36ba4759b823",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o",
+          "mode": "list",
+          "cachedResultName": "n8n_setting",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "token",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1YCtpKbstOufsjgXK4vRbTeveS3gszULZBRSijCueW6o/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "platform",
+              "lookupValue": "IG"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -976,
+        -384
+      ],
+      "id": "52b9c1ce-3326-4563-bfb1-f1f5bbdd06fa",
+      "name": "取得token",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "008504b7-025a-41c9-91a6-7bc0741b90b0",
+              "leftValue": "={{ $('取得貼文留言').item.json.paging.next }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        -416
+      ],
+      "id": "803c46da-a312-4df4-b925-e9dbaafae272",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.nextUrl}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('取得token').first().json.token }}"
+            },
+            {
+              "name": "fields",
+              "value": "id,text,timestamp,username,from{id,username}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -64,
+        -416
+      ],
+      "id": "c9eed478-b073-4516-8129-643342818341",
+      "name": "取得貼文留言"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "57298000-b514-4020-a32b-b88754cc7071",
+              "name": "nextUrl",
+              "value": "=https://graph.facebook.com/v18.0/{{ $('設定抽獎參數').item.json.postId }}/comments?limit=25&fields=id,text,timestamp,username,from{id,username}",
+              "type": "string"
+            },
+            {
+              "id": "9b0db961-5210-45e6-ae1b-1668d7e99d9b",
+              "name": "allComments",
+              "value": "={{ [] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -640,
+        -384
+      ],
+      "id": "a6100242-e83f-4b5b-9577-13e756d41560",
+      "name": "初始 API URL"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "documentId": {
+          "__rl": true,
+          "value": "1RZIvR-Brrv0WoQnEbqgVboZdyVVnaub9oLmLj00AC3I",
+          "mode": "list",
+          "cachedResultName": "IG_lottery",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RZIvR-Brrv0WoQnEbqgVboZdyVVnaub9oLmLj00AC3I/edit?usp=drivesdk"
+        },
+        "title": "={{ $('設定抽獎參數').item.json.title }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -816,
+        -384
+      ],
+      "id": "6ea55858-6bb9-4d59-9874-d1ed5c3a299d",
+      "name": "Create sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "postId",
+              "value": "18063445162981030"
+            },
+            {
+              "name": "title",
+              "value": "泰百小說"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fb7a7398-96dd-4a0a-8652-c315e95079e0",
+      "name": "設定抽獎參數",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -1120,
+        -384
+      ],
+      "notes": "### **請修改這裡**\n\n在這裡集中設定所有抽獎條件，方便管理。\n\n- **postId**: 您要抽獎的貼文ID。\n- **requiredKeyword**: 留言必須包含的關鍵字。\n- **requiredTags**: 最少需要標記的朋友數量。\n- **numberOfWinners**: 要抽出的中獎者人數。"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1RZIvR-Brrv0WoQnEbqgVboZdyVVnaub9oLmLj00AC3I",
+          "mode": "list",
+          "cachedResultName": "IG_lottery",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RZIvR-Brrv0WoQnEbqgVboZdyVVnaub9oLmLj00AC3I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('設定抽獎參數').first().json.title }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        352,
+        -416
+      ],
+      "id": "a434453a-e5ae-4f5b-aa59-e2bcb3cdb4e8",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nreturn $input.first().json.data;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        -416
+      ],
+      "id": "731f3ba3-186d-4c96-90b9-d0acac431a64",
+      "name": "取得資料"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\n\nreturn ({nextUrl: $('取得貼文留言').first().json.paging.next});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        -48
+      ],
+      "id": "d6092986-d75a-4c8b-b5c0-792f2a3c8de5",
+      "name": "Code"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        -400
+      ],
+      "id": "a1cb5fc8-aff2-4ea6-886e-c147ce832cb3",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "postId",
+              "value": "18063445162981030"
+            },
+            {
+              "name": "requiredKeyword"
+            },
+            {
+              "name": "title",
+              "value": "泰百小說"
+            },
+            {
+              "name": "deadline",
+              "value": "2025-07-29T00:00:00+08:00"
+            }
+          ],
+          "number": [
+            {
+              "name": "requiredTags",
+              "value": 1
+            },
+            {
+              "name": "numberOfWinners",
+              "value": 4
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "678bd2a5-cccb-4f82-9b0b-cef17a80d213",
+      "name": "抽獎條件",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -1424,
+        352
+      ],
+      "notes": "### **請修改這裡**\n\n在這裡集中設定所有抽獎條件，方便管理。\n\n- **postId**: 您要抽獎的貼文ID。\n- **requiredKeyword**: 留言必須包含的關鍵字。\n- **requiredTags**: 最少需要標記的朋友數量。\n- **numberOfWinners**: 要抽出的中獎者人數。"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1RZIvR-Brrv0WoQnEbqgVboZdyVVnaub9oLmLj00AC3I",
+          "mode": "list",
+          "cachedResultName": "IG_lottery",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RZIvR-Brrv0WoQnEbqgVboZdyVVnaub9oLmLj00AC3I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $json.title }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1264,
+        352
+      ],
+      "id": "6cb0d141-5b0e-419d-b092-f86ad15ba62b",
+      "name": "取得所有留言",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YV1rBbFanar1c0gf",
+          "name": "Google Sheets account THAISKR"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.text }}",
+              "operation": "contains",
+              "value2": "={{ $('抽獎條件').item.json.requiredKeyword }}"
+            }
+          ]
+        }
+      },
+      "id": "62f9ea9b-c635-4272-8b7e-fcceee29f5f9",
+      "name": "2. 篩選過濾",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "username",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        352
+      ],
+      "id": "1c130b62-6a0c-4109-abd1-fb60dcde0a49",
+      "name": "Remove Duplicates"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "3. 篩選標記數": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "設定抽獎參數",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "取得token": {
+      "main": [
+        [
+          {
+            "node": "Create sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "取得貼文留言": {
+      "main": [
+        [
+          {
+            "node": "取得資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "初始 API URL": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create sheet": {
+      "main": [
+        [
+          {
+            "node": "初始 API URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "設定抽獎參數": {
+      "main": [
+        [
+          {
+            "node": "取得token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "取得資料": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "取得貼文留言",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "取得貼文留言",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "抽獎條件": {
+      "main": [
+        [
+          {
+            "node": "取得所有留言",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "取得所有留言": {
+      "main": [
+        [
+          {
+            "node": "2. 篩選過濾",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. 篩選過濾": {
+      "main": [
+        [
+          {
+            "node": "3. 篩選標記數",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "5. 隨機抽出中獎者",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "25469f75-cffd-48e7-bb4b-fbb6e04ee2cb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "63f5f596968ff4e0f35871ebea9236b360f858b68307fa9fd22aafb31284ef25"
+  },
+  "id": "ciao0cQMJ1R6nHcs",
+  "tags": []
+}

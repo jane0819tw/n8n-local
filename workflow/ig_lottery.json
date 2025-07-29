@@ -1,0 +1,304 @@
+{
+  "name": "Instagram Giveaway Tool (Template)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2705a208-812f-41bf-a320-337ac9628045",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "comment",
+        "operation": "getMany",
+        "mediaId": "={{ $node[\"Manual Trigger\"].json.postId }}",
+        "returnAll": true,
+        "options": {}
+      },
+      "id": "e7c65074-a690-4e78-bc4a-bfcb14f6b215",
+      "name": "1. Get Post Comments",
+      "type": "n8n-nodes-base.instagram",
+      "typeVersion": 2,
+      "position": [
+        860,
+        300
+      ],
+      "credentials": {
+        "instagramApi": {
+          "id": "PLACEHOLDER_CREDENTIAL_ID",
+          "name": "PLACEHOLDER_CREDENTIAL_NAME"
+        }
+      },
+      "notes": "此節點會抓取指定貼文下的所有留言。\n\n請注意：\n1. 請在右側 \"Credentials\" 選擇您自己的 Instagram 憑證。\n2. 執行的速度取決於留言數量。"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.text }}",
+              "operation": "contains",
+              "value2": "我要抽獎"
+            }
+          ]
+        }
+      },
+      "id": "e3052a95-ac5a-4934-8c83-7c98b64b159b",
+      "name": "2. Filter by Keyword",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        300
+      ],
+      "notes": "篩選出含有特定關鍵字的留言。\n\n**請修改**: \n將 \"我要抽獎\" 改成您活動要求的特定文字。"
+    },
+    {
+      "parameters": {
+        "jsCode": "const requiredTags = 2; // <--- 修改這裡：設定要求的標記人數\n\nconst filteredItems = [];\n\nfor (const item of $items) {\n  const commentText = item.json.text || '';\n  // 計算 '@' 符號的數量\n  const tagCount = (commentText.match(/@/g) || []).length;\n\n  if (tagCount >= requiredTags) {\n    filteredItems.push(item);\n  }\n}\n\nreturn filteredItems;"
+      },
+      "id": "ab7045b8-500b-47eb-b530-ebc3bb168285",
+      "name": "3. Filter by Tag Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        300
+      ],
+      "notes": "使用程式碼篩選標記人數符合要求的留言。\n\n**請修改**: \n在程式碼的第一行 `requiredTags` 來設定最少需要標記幾位朋友。"
+    },
+    {
+      "parameters": {
+        "fieldToMatchOn": "={{ $json.from.username }}"
+      },
+      "id": "e402434a-9e19-482a-a034-7a91174ef827",
+      "name": "4. Remove Duplicates",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        300
+      ],
+      "notes": "根據留言者的 username 來移除重複的留言，確保每位用戶只有一次抽獎機會。"
+    },
+    {
+      "parameters": {
+        "jsCode": "const numberOfWinners = 3; // <--- 修改這裡：設定中獎人數\n\nconst participants = $items.map(item => item.json);\n\nif (participants.length === 0) {\n  return [{ json: { error: '沒有任何合格的抽獎者！' }}];\n}\n\n// Fisher-Yates shuffle algorithm (洗牌演算法)\nfor (let i = participants.length - 1; i > 0; i--) {\n  const j = Math.floor(Math.random() * (i + 1));\n  [participants[i], participants[j]] = [participants[j], participants[i]];\n}\n\nconst winners = participants.slice(0, numberOfWinners);\n\nreturn [{ json: { winners: winners, winnerCount: winners.length } }];"
+      },
+      "id": "970335e2-2c6c-4861-9f20-1111d4d38c64",
+      "name": "5. Select Winners",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        300
+      ],
+      "notes": "從合格名單中，隨機抽出指定數量的中獎者。\n\n**請修改**:\n在程式碼第一行 `numberOfWinners` 來設定要抽出幾位中獎者。"
+    },
+    {
+      "parameters": {
+        "content": "=恭喜以下中獎者！\n\n{{ $node[\"5. Select Winners\"].json.winners.map(w => \"@\" + w.from.username).join('\\n') }}\n\n請在24小時內主動私訊我們以領取獎品！",
+        "note": "### 待辦事項：管理員通知\n\n由於 Instagram API 限制，我們無法主動私訊中獎者。\n\n**請將這個便利貼節點替換成您自己的通知節點**，例如：\n- **Slack**: 發送訊息到指定頻道\n- **Telegram**: 發送訊息給您自己\n- **Email**: 寄信通知\n\n通知的內容應包含上方產生的「中獎者名單」，以便您手動進行後續操作（例如：手動私訊、核對身份）。"
+      },
+      "id": "5fa23d90-6da0-466d-9783-6cc3bf92a013",
+      "name": "7. TODO: Notify Admin",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1960,
+        500
+      ],
+      "color": "#FFC552"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "storyCaption",
+              "value": "=恭喜以下 {{ $node[\"5. Select Winners\"].json.winnerCount }} 位中獎者！\n\n{{ $node[\"5. Select Winners\"].json.winners.map(w => \"@\" + w.from.username).join('\\n') }}\n\n請在24小時內主動私訊我們！#抽獎"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ac68a356-32d7-463e-b873-1577eb37d45e",
+      "name": "6. Set Story Caption",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        300
+      ],
+      "notes": "這個節點會準備好等等要發布到限時動態的文字內容，其中會包含標記所有中獎者。"
+    },
+    {
+      "parameters": {
+        "content": "### 待辦事項：產生限動圖片\n\n**這一步是必要的，但無法單靠一個節點完成。**\n\nn8n 需要一張圖片才能發布限時動態。您有以下幾種選擇：\n\n1.  **使用圖片生成服務 (推薦)**:\n    -   串接 [BannerBear](https://www.bannerbear.com/) 或類似服務的 API。\n    -   將 `6. Set Story Caption` 節點產生的中獎名單文字，透過 HTTP Request 節點傳給 BannerBear。\n    -   BannerBear 會回傳一張製作好的圖片 URL，這個 URL 就是下一步的輸入。\n\n2.  **使用固定的背景圖**:\n    -   您可以上傳一張預先做好的「中獎名單」背景圖到雲端空間。\n    -   直接在這個工作流程的下一步使用該圖片的公開 URL。\n\n**這個節點的輸出，必須是一個包含圖片公開網址 (Public URL) 的 `imageUrl` 欄位。**"
+      },
+      "id": "e215d2a8-1b6c-4621-9978-d461148810e7",
+      "name": "8. TODO: Generate Story Image",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2180,
+        300
+      ],
+      "color": "#FFC552"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "content",
+        "operation": "createStory",
+        "contentType": "image",
+        "url": "={{ $node[\"8. TODO: Generate Story Image\"].json.imageUrl }}",
+        "options": {
+          "caption": "={{ $node[\"6. Set Story Caption\"].json.storyCaption }}"
+        }
+      },
+      "id": "314867b9-d5d1-42ae-8480-166297072a2e",
+      "name": "9. Post Story with Mentions",
+      "type": "n8n-nodes-base.instagram",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        300
+      ],
+      "notes": "這是最後一步，將上一步產生的圖片發布到限時動態，並在文字中標記所有中獎者。\n\n**請注意**:\n1. 確保 `Credentials` 選擇了正確的 IG 帳號。\n2. `URL` 欄位的表達式 `{{ $node[\"8. TODO: Generate Story Image\"].json.imageUrl }}` 能正確地從您選擇的圖片生成方案中獲取圖片網址。",
+      "credentials": {
+        "instagramApi": {
+          "id": "PLACEHOLDER_CREDENTIAL_ID",
+          "name": "PLACEHOLDER_CREDENTIAL_NAME"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "PLACEHOLDER_POST_ID_HERE",
+        "options": {}
+      },
+      "id": "f58359b8-d45e-49b0-9b4e-e14b2d2f70b7",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        640,
+        300
+      ],
+      "notes": "點擊 \"Execute Workflow\" 後，在這裡手動執行。\n\n**請修改**:\n將下方的 `path` 欄位的值改成您要抽獎的 Instagram 貼文 ID。\n\n(如何取得貼文ID？可以從貼文網址中找到，例如 `.../p/C6_AbCd1234/`，`C6_AbCd1234` 就是ID的一部分，但您需要完整的 Media ID，通常可以透過其他 API 工具或開發者工具查看)"
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Manual Trigger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Get Post Comments": {
+      "main": [
+        [
+          {
+            "node": "2. Filter by Keyword",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Filter by Keyword": {
+      "main": [
+        [
+          {
+            "node": "3. Filter by Tag Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Filter by Tag Count": {
+      "main": [
+        [
+          {
+            "node": "4. Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "5. Select Winners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Select Winners": {
+      "main": [
+        [
+          {
+            "node": "6. Set Story Caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Set Story Caption": {
+      "main": [
+        [
+          {
+            "node": "7. TODO: Notify Admin",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "8. TODO: Generate Story Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8. TODO: Generate Story Image": {
+      "main": [
+        [
+          {
+            "node": "9. Post Story with Mentions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "1. Get Post Comments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
